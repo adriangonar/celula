@@ -2220,52 +2220,50 @@ function skipName(){
   showScreen('screen-board');
 }
 
-// Save score — use no-cors (fire-and-forget, no response needed)
-function saveScore(){
-  if(!playerName) return;
-  const misionesCompletadas = Object.values(state.missions).filter(v=>v>=100).length;
-  const insigniasCount = Object.values(state.badges).filter(Boolean).length;
-  const params = new URLSearchParams({
-    nombre:   playerName,
-    xp:       state.xp,
-    misiones: misionesCompletadas,
-    insignias:insigniasCount,
-    action:   'save'
+// ── JSONP: única técnica 100% compatible con Google Apps Script ──
+function jsonpRequest(url, cbName) {
+  return new Promise(function(resolve, reject) {
+    var script = document.createElement('script');
+    var timeout = setTimeout(function() {
+      cleanup(); reject('timeout');
+    }, 8000);
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = function(data) { cleanup(); resolve(data); };
+    script.onerror = function() { cleanup(); reject('error'); };
+    script.src = url + '&callback=' + cbName;
+    document.head.appendChild(script);
   });
-  // GET request avoids preflight CORS issues with Apps Script
-  fetch(SCRIPT_URL + '?' + params.toString() + '&v=' + Date.now())
-    .catch(()=>{});
 }
 
-// Load leaderboard — JSONP-style workaround for CORS
-function loadLeaderboard(){
+function saveScore() {
+  if (!playerName) return;
+  const misionesCompletadas = Object.values(state.missions).filter(v => v >= 100).length;
+  const insigniasCount = Object.values(state.badges).filter(Boolean).length;
+  const cb = '_save_' + Date.now();
+  const url = SCRIPT_URL + '?' + new URLSearchParams({
+    action: 'save', nombre: playerName,
+    xp: String(state.xp), misiones: String(misionesCompletadas),
+    insignias: String(insigniasCount), v: String(Date.now())
+  }).toString();
+  jsonpRequest(url, cb).catch(() => {});
+}
+
+function loadLeaderboard() {
   const table = document.getElementById('lbTable');
   table.innerHTML = '<div class="lb-loading">Cargando campeones</div>';
-
-  // Use a <script> tag to bypass CORS (JSONP)
-  const cbName = '_lbCb_' + Date.now();
-  window[cbName] = function(rows){
-    delete window[cbName];
-    const old = document.getElementById('_lbScript');
-    if(old) old.remove();
-    renderLeaderboard(rows);
-  };
-
-  const s = document.createElement('script');
-  s.id = '_lbScript';
-  s.onerror = function(){
-    delete window[cbName];
-    // Fallback: plain fetch
-    fetch(SCRIPT_URL + '?action=top&v=' + Date.now())
-      .then(r => r.json())
-      .then(rows => renderLeaderboard(rows))
-      .catch(()=>{
-        table.innerHTML = '<div class="lb-empty">No se pudo cargar.<br>Pulsa ↺ para reintentar.</div>';
-      });
-  };
-  s.src = SCRIPT_URL + '?action=top&callback=' + cbName + '&v=' + Date.now();
-  document.head.appendChild(s);
-  setTimeout(()=>{ if(window[cbName]){ delete window[cbName]; s.remove(); fetch(SCRIPT_URL + '?action=top&v='+Date.now()).then(r=>r.json()).then(rows=>renderLeaderboard(rows)).catch(()=>{ table.innerHTML='<div class="lb-empty">Sin conexión. Pulsa ↺</div>'; }); } }, 5000);
+  const cb = '_lb_' + Date.now();
+  const url = SCRIPT_URL + '?action=top&v=' + Date.now();
+  jsonpRequest(url, cb)
+    .then(function(rows) {
+      renderLeaderboard(Array.isArray(rows) ? rows : []);
+    })
+    .catch(function() {
+      table.innerHTML = '<div class="lb-empty">No se pudo cargar.<br>Pulsa ↺ para reintentar.</div>';
+    });
 }
 
 function renderLeaderboard(rows){
