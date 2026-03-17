@@ -1522,9 +1522,11 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
   filter:drop-shadow(0 3px 12px rgba(0,0,0,.5));
   animation:char-float 2s ease-in-out infinite alternate;
 }
-.p2-mission-name{
-  font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700;
-  color:var(--gold-light); text-align:center;
+.p2-mission-name, .p2-mission-desc{
+  font-family:'DM Sans',sans-serif; font-size:.92rem;
+  color:rgba(255,255,255,.82); line-height:1.65; text-align:center;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:14px 16px; width:100%;
 }
 .p2-question{
   font-family:'Playfair Display',serif; font-style:italic;
@@ -1706,9 +1708,11 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
   background:rgba(255,255,255,.06); border-radius:50px; padding:4px 14px;
 }
 .p2-icon{ font-size:3.5rem; line-height:1; filter:drop-shadow(0 4px 12px rgba(0,0,0,.5)); }
-.p2-mission-name{
-  font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700;
-  color:var(--gold-light); text-align:center;
+.p2-mission-name, .p2-mission-desc{
+  font-family:'DM Sans',sans-serif; font-size:.92rem;
+  color:rgba(255,255,255,.82); line-height:1.65; text-align:center;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:14px 16px; width:100%;
 }
 .p2-feedback{
   font-family:'Playfair Display',serif; font-size:.92rem; font-weight:700;
@@ -2072,7 +2076,7 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
   <div class="p2-card" id="p2Card">
     <div class="p2-label">¿Qué P es esta misión?</div>
     <div class="p2-icon" id="p2Icon">📣</div>
-    <div class="p2-mission-name" id="p2MissionName">Predicar</div>
+    <div class="p2-mission-desc" id="p2MissionName">Descripción...</div>
   </div>
 
   <div class="p2-options" id="p2Options"></div>
@@ -3786,7 +3790,7 @@ function buildP2Questions(){
     // Pick 2 wrong heroes randomly
     const others = fivePsData.filter(x=>x.id!==p.id).sort(()=>Math.random()-.5).slice(0,2);
     const options = [p, ...others].sort(()=>Math.random()-.5);
-    return { correct:p.id, missionIcon:p.missionIcon, missionName:p.name, options };
+    return { correct:p.id, missionIcon:p.missionIcon, missionName:p.name, pDesc:p.pDesc, options };
   });
 }
 
@@ -3817,7 +3821,7 @@ function showP2Question(){
   const q = m5.questions[m5.current];
   document.getElementById('p2Round').textContent = 'Ronda '+(m5.current+1)+' / '+m5.questions.length;
   document.getElementById('p2Icon').textContent = q.missionIcon;
-  document.getElementById('p2MissionName').textContent = q.missionName;
+  document.getElementById('p2MissionName').textContent = q.pDesc;
   document.getElementById('p2Correct').textContent = m5.correct;
   document.getElementById('p2Wrong').textContent = m5.wrong;
   document.getElementById('p2Left').textContent = m5.questions.length - m5.current;
