@@ -2133,6 +2133,7 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
       placeholder="Escribe tu nombre..."
       maxlength="20"
       onkeydown="if(event.key==='Enter') confirmName()"
+      oninput="checkSavedProgress(this.value)"
       autocomplete="off">
     <button class="btn-gold" style="width:100%;margin-top:4px;" onclick="confirmName()">
       ¡Entrar al reino! →
@@ -2143,6 +2144,7 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
     <button class="btn-outline" style="font-size:.8rem;padding:8px 20px;" onclick="skipName()">
       Jugar sin nombre
     </button>
+    <div id="savedProgressHint" style="display:none;font-family:'DM Sans',sans-serif;font-size:.72rem;color:rgba(201,168,76,.7);text-align:center;"></div>
   </div>
 </div>
 
@@ -2232,7 +2234,48 @@ body{ font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--text
 // ─────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────
-const state = { xp:0, missions:{1:0,2:0,3:0}, badges:{} };
+const state = { xp:0, missions:{1:0,2:0,3:0,4:0,5:0,6:0}, badges:{} };
+
+// ─────────────────────────────────────────────────────────────
+// PERSISTENCIA — localStorage
+// ─────────────────────────────────────────────────────────────
+function saveProgress(){
+  if(!playerName) return;
+  const key = 'laroca_' + playerName.toLowerCase().replace(/\s+/g,'_');
+  const data = {
+    xp:       state.xp,
+    missions: state.missions,
+    badges:   state.badges,
+    saved:    Date.now()
+  };
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){}
+}
+
+function loadProgress(name){
+  const key = 'laroca_' + name.toLowerCase().replace(/\s+/g,'_');
+  try {
+    const raw = localStorage.getItem(key);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    // Only load if saved data is better (higher XP)
+    if(data.xp > state.xp){
+      state.xp = data.xp;
+      // Merge missions (keep highest progress)
+      Object.keys(data.missions||{}).forEach(k=>{
+        state.missions[k] = Math.max(state.missions[k]||0, data.missions[k]||0);
+      });
+      // Merge badges
+      Object.assign(state.badges, data.badges||{});
+    }
+    return data.xp > 0;
+  } catch(e){ return false; }
+}
+
+function clearProgress(){
+  if(!playerName) return;
+  const key = 'laroca_' + playerName.toLowerCase().replace(/\s+/g,'_');
+  try { localStorage.removeItem(key); } catch(e){}
+}
 
 
 // ─────────────────────────────────────────────────────────────
@@ -2452,6 +2495,7 @@ function showBadgeUnlock(b){
 function closeBadgeUnlock(){
   document.getElementById('badgeUnlockOverlay').classList.remove('open');
   playClick();
+  saveProgress();
   refreshBoard();
 }
 
@@ -2877,6 +2921,7 @@ function showCelebration(num,xp,msg){
   refreshBoard();
   setTimeout(()=>{
     checkBadges();
+    saveProgress();
     setTimeout(saveScore, 800);
   }, 1200);
 }
@@ -3929,7 +3974,32 @@ function confirmName(){
   if(!val){ document.getElementById('playerNameInput').focus(); return; }
   playerName = val.slice(0,20);
   playClick();
+  // Load saved progress for this player
+  const hadProgress = loadProgress(playerName);
+  if(hadProgress){
+    showToast('¡Bienvenido de nuevo, '+playerName+'! Tu progreso ha sido restaurado ✦','success');
+  }
   showScreen('screen-board');
+}
+
+function checkSavedProgress(val){
+  const name = val.trim().slice(0,20);
+  const hint = document.getElementById('savedProgressHint');
+  if(!hint) return;
+  if(!name){ hint.style.display='none'; return; }
+  const key = 'laroca_' + name.toLowerCase().replace(/\s+/g,'_');
+  try {
+    const raw = localStorage.getItem(key);
+    if(raw){
+      const d = JSON.parse(raw);
+      const done = Object.values(d.missions||{}).filter(v=>v>=100).length;
+      hint.textContent = '✦ Progreso guardado: '+d.xp+' XP · '+done+' misiones completadas';
+      hint.style.display = 'block';
+    } else {
+      hint.textContent = '';
+      hint.style.display = 'none';
+    }
+  } catch(e){ hint.style.display='none'; }
 }
 
 function skipName(){
